@@ -19,32 +19,32 @@ Vibe from `mcp.json`), NOT in the built-in toolset. They are **normal tool
 functions**, called the same way as `file_system` or any connector:
 
 1. **Discovery**: call `search_tool_functions` (best_match) with a query such
-   as `ticket_add ticket help`. You should see `ticketing.ticket_add`,
-   `ticketing.ticket_get`, `ticketing.ticket_list`, `ticketing.ticket_comment`,
-   `ticketing.ticket_status`, `ticketing.ticket_rules`, `ticketing.ticket_help`.
+   as `ticket_add ticket help`. You should see `mcp_ticketing.ticket_add`,
+   `mcp_ticketing.ticket_get`, `mcp_ticketing.ticket_list`, `mcp_ticketing.ticket_comment`,
+   `mcp_ticketing.ticket_status`, `mcp_ticketing.ticket_rules`, `mcp_ticketing.ticket_help`.
    Then `search_tool_functions` (details) on the exact name before first use.
 2. **Call**: through `run_typescript`, as `await
-   tools.ticketing.ticket_add({ ... })` — tools are grouped under
-   `tools.<group>.<function>`, and this plugin's group is `ticketing`.
+   tools.mcp_ticketing.ticket_add({ ... })` — tools are grouped under
+   `tools.<group>.<function>`, and this plugin's group is `mcp_ticketing` (server name prefixes the group).
    Args are plain objects matching each tool's schema.
 3. **If the tools are NOT in the namespace** (freshly installed plugin): the
    server only mounts at session start. Tell the user to run `/reload` or open
    a new session, then retry discovery. Do NOT silently skip ticketing — say
    so and stop.
 
-`ticketing.ticket_help({})` prints the whole contract (tools, required params,
-statuses, delegation, error envelope). `ticketing.ticket_rules({})` is the
+`mcp_ticketing.ticket_help({})` prints the whole contract (tools, required params,
+statuses, delegation, error envelope). `mcp_ticketing.ticket_rules({})` is the
 delegatee banner. When lost, call help first.
 
 ## Args cheat sheet
 
 ```
-ticketing.ticket_add({ rollout_id, todo, md_content })        // → returns N
-ticketing.ticket_get({ id: N })                               // row + comments
-ticketing.ticket_list({ rollout_id })   or  ({ all: true })    // status: optional filter
-ticketing.ticket_comment({ id: N, content })                  // ≤1000 chars, one at a time
-ticketing.ticket_status({ id: N, rollout_id: OWNER, status }) // the ONLY mutation
-ticketing.ticket_rules({})  ticketing.ticket_help({})
+mcp_ticketing.ticket_add({ rollout_id, todo, md_content })        // → returns N
+mcp_ticketing.ticket_get({ id: N })                               // row + comments
+mcp_ticketing.ticket_list({ rollout_id })   or  ({ all: true })    // status: optional filter
+mcp_ticketing.ticket_comment({ id: N, content })                  // ≤1000 chars, one at a time
+mcp_ticketing.ticket_status({ id: N, rollout_id: OWNER, status }) // the ONLY mutation
+mcp_ticketing.ticket_rules({})  mcp_ticketing.ticket_help({})
 ```
 
 Statuses: pending | in_progress | completed | cancelled | superseded. Errors
