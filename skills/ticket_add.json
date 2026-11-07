@@ -1,0 +1,14 @@
+{
+  "name": "ticket_add",
+  "description": "Create a ticket. todo = one-line summary; md_content = the spec, written ONCE here (the immutable body). Returns the permanent ticket number N.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["rollout_id", "todo"],
+    "properties": {
+      "rollout_id": { "type": "string" },
+      "todo": { "type": "string" },
+      "md_content": { "type": "string" }
+    }
+  }
+}
