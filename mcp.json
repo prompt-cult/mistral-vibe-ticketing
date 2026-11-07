@@ -5,9 +5,6 @@
       "type": "stdio",
       "command": "bun",
       "args": ["run", "${PLUGIN_ROOT}/server/index.ts"],
-      "env": {
-        "TICKET_DB_HOME": "${PLUGIN_DATA}"
-      },
       "cwd": "."
     }
   }

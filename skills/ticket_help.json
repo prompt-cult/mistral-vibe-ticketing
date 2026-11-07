@@ -1,9 +1,0 @@
-{
-  "name": "ticket_help",
-  "description": "Return the ticket contract: a ticket is an IMMUTABLE record with an APPEND-ONLY comment stream; STATUS is the only field that ever changes. rollout_id IS the session id — one id, no other. Access is by ticket number.",
-  "inputSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {}
-  }
-}

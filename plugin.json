@@ -2,14 +2,15 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ticketing",
   "version": "1.0.0",
-  "description": "Ticketing: a ticket is an immutable record with an append-only comment stream; status is the only field that ever changes. rollout_id IS the session id — one id, no other. Access is by ticket number.",
+  "description": "Ticketing: immutable tickets with append-only comment streams; status is the only mutation; tickets survive across sessions and repos. Port of opencode-ticketing v2.2.1.",
   "author": {
-    "name": "Consensus Solutions"
+    "name": "Prompt Cult",
+    "url": "https://github.com/prompt-cult"
   },
   "homepage": "https://github.com/prompt-cult/mistral-vibe-ticketing",
   "repository": "https://github.com/prompt-cult/mistral-vibe-ticketing",
   "license": "MIT",
-  "keywords": ["ticketing", "todos"],
+  "keywords": ["ticketing", "todos", "delegation"],
   "extensions": {
     "ai.mistral.vibe": {
       "schemaVersion": 1,

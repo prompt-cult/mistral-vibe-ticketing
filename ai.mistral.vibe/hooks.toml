@@ -1,0 +1,6 @@
+[[hooks]]
+name = "todo-mirror"
+type = "post_tool"
+match = "todo"
+command = "bun run sync-hook.ts"
+strict = false
