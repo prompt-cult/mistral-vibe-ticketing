@@ -5,15 +5,51 @@ description: Use for multi-step or long-lived engineering work — create a tick
 
 # Ticketing (mistral-vibe port of opencode-ticketing)
 
-Tools surface as `ticketing.ticket_add`, `ticketing.ticket_get`,
-`ticketing.ticket_list`, `ticketing.ticket_comment`, `ticketing.ticket_status`,
-`ticketing.ticket_rules`, `ticketing.ticket_help`. Call `ticketing.ticket_help`
-first if the contract is not fresh: **a ticket is an immutable record with an
-append-only comment stream; status is the only field that ever changes.** The
-todo list is ephemeral ordering. The database is ONE SQLite file outside every
-repo (`~/.config/mistral-vibe/mistral-vibe-ticketing/ticket.db`), shared by all
+**A ticket is an immutable record with an append-only comment stream; status is
+the only field that ever changes.** The todo list is ephemeral ordering. The
+database is ONE SQLite file outside every repo
+(`~/.config/mistral-vibe/mistral-vibe-ticketing/ticket.db`), shared by all
 TUIs on hundreds of projects and worktrees; the autoincrement id is the only
 global ticket number.
+
+## How to reach the tools (READ THIS FIRST)
+
+The tools live on the plugin's MCP stdio server (`server/index.ts`, started by
+Vibe from `mcp.json`), NOT in the built-in toolset. They are **normal tool
+functions**, called the same way as `file_system` or any connector:
+
+1. **Discovery**: call `search_tool_functions` (best_match) with a query such
+   as `ticket_add ticket help`. You should see `ticketing.ticket_add`,
+   `ticketing.ticket_get`, `ticketing.ticket_list`, `ticketing.ticket_comment`,
+   `ticketing.ticket_status`, `ticketing.ticket_rules`, `ticketing.ticket_help`.
+   Then `search_tool_functions` (details) on the exact name before first use.
+2. **Call**: through `run_typescript`, as `await
+   tools.ticketing.ticket_add({ ... })` — tools are grouped under
+   `tools.<group>.<function>`, and this plugin's group is `ticketing`.
+   Args are plain objects matching each tool's schema.
+3. **If the tools are NOT in the namespace** (freshly installed plugin): the
+   server only mounts at session start. Tell the user to run `/reload` or open
+   a new session, then retry discovery. Do NOT silently skip ticketing — say
+   so and stop.
+
+`ticketing.ticket_help({})` prints the whole contract (tools, required params,
+statuses, delegation, error envelope). `ticketing.ticket_rules({})` is the
+delegatee banner. When lost, call help first.
+
+## Args cheat sheet
+
+```
+ticketing.ticket_add({ rollout_id, todo, md_content })        // → returns N
+ticketing.ticket_get({ id: N })                               // row + comments
+ticketing.ticket_list({ rollout_id })   or  ({ all: true })    // status: optional filter
+ticketing.ticket_comment({ id: N, content })                  // ≤1000 chars, one at a time
+ticketing.ticket_status({ id: N, rollout_id: OWNER, status }) // the ONLY mutation
+ticketing.ticket_rules({})  ticketing.ticket_help({})
+```
+
+Statuses: pending | in_progress | completed | cancelled | superseded. Errors
+return `{code, message, corrected_call}` — re-emit `corrected_call` verbatim
+(fill any `<fill: …>`) and the call succeeds.
 
 ## The flow: create, comment, change status
 
@@ -24,15 +60,14 @@ global ticket number.
    `.tmp/tickets/NNN_slug.md` scratch only while drafting.
 2. todo — append item **`N: <descriptive name>`** at the END of the list.
    Front-jump only when the user says "do it next" or gives an explicit order.
-   Closing the item closes ticket N automatically (the mirror hook).
+   Closing the item closes ticket N automatically (the plugin's post_tool
+   mirror hook, fail-open).
 3. Everything after creation is a comment — a SHORT go/no-go note: done /
-   not done / blocked, 1000 chars max: `ticket_comment id=N content="..."`.
-   Long reports NEVER go on the ticket — detail lives in the final response.
-4. Status is the only mutation: `ticket_status id=N
-   rollout_id=<OWNER session id> status=<pending|in_progress|completed|
-   cancelled|superseded>`, or the todo mirror does it for you. To supersede:
-   set the status and name the replacement ticket in a comment. Nothing is
-   ever deleted.
+   not done / blocked, 1000 chars max. Long reports NEVER go on the ticket —
+   detail lives in the final response.
+4. Status is the only mutation: `ticket_status` with the OWNER's rollout_id,
+   or the todo mirror does it for you. To supersede: set the status and name
+   the replacement ticket in a comment. Nothing is ever deleted.
 
 ## Delegation — the stack/burndown cycle
 
@@ -50,20 +85,17 @@ global ticket number.
      the stack, works it next. Iterate until green.
 4. No CI monitoring until all tickets are done.
 
-## rollout_id and session ids on Vibe
+## rollout_id on Vibe
 
-Vibe provides no `ses_…` id in stdio server env. The plugin derives a stable
-per-session id: the hook stamp is the session directory name (the `cwd` field
-of the hook's stdin JSON), exposed to the tools as the caller's session id via
-`TICKET_SESSION_ID`. If unset, make rollout_id an explicit, human-readable id
-you keep for the whole session (e.g. `vibe-<date>-<topic>`), and NAME it to
-delegatees — it is what they pass on `ticket_status` and `ticket_list`.
-Adopt another session's work with `ticket_list rollout_id=<that id>`.
+Vibe exposes no `ses_…` id to a stdio server. Pick one explicit, readable id
+per session (e.g. `vibe-<date>-<topic>`), use it on every `ticket_add` and
+`ticket_list`, and NAME it to delegatees — it is what they pass on
+`ticket_status` (the OWNER's id) and `ticket_list`. Adopt another session's
+work with `ticket_list({ rollout_id: "<that id>" })`.
 
-## Errors
+## Never
 
-Every failure returns `{code, message, corrected_call}`. corrected_call is the
-COMPLETE call — received values kept, the REAL owner session id filled
-wherever the ticket is known. Re-emit it verbatim (fill any `<fill: …>`
-placeholder) and the call succeeds. Never retry a failing call more than
-once.
+- Do not read the SQLite file directly — the tools are the API.
+- Do not rewrite or delete a ticket; supersede instead.
+- Do not put long reports in comments.
+- Do not retry a failing call more than once — re-emit `corrected_call`.
