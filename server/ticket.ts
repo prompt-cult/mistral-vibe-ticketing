@@ -236,7 +236,7 @@ export const ADD_INPUT = {
   type: "object",
   additionalProperties: false,
   properties: {
-    rollout_id: { type: "string", description: "YOUR session id (ses_…)" },
+    rollout_id: { type: "string", description: "YOUR session id (on Vibe, a hand-picked per-session rollout id, e.g. vibe-<date>-<topic>)" },
     todo: { type: "string", description: "one-line summary" },
     md_content: { type: "string", description: "the spec, written ONCE at creation — the immutable body" },
   },
@@ -352,7 +352,9 @@ string to spell wrongly; each tool's schema declares its required params:
   ticket_get).
 - ticket_help -> this text.
 
-The session id: rollout_id IS the session id (ses_…) — one id, no other.
+The session id: rollout_id IS the session id — one id, no other. On Vibe
+it is a hand-picked per-session rollout id (e.g. vibe-<date>-<topic>),
+not a "ses_…" id.
 - You MUST know your own session id. ticket_add and ticket_list take YOUR
   session id by default; ticket_status takes the ticket owner's.
 - When delegating, NAME the session id the delegatee must use — it uses
