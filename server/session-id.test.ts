@@ -135,9 +135,12 @@ test("find_marker prefers the newer mtime: a uuid present in two sessions resolv
     utimesSync(f, midTime, midTime)
   const bChunk = join(home, "logs", "session", "unified", "sessB-dir", "journal", "0000000000000400.jsonl")
   // Pinned epochs, a full year apart: two utimes a millisecond apart can
-  // tie on a coarse filesystem clock and a tie falls back to dir order.
+  // tie on a coarse filesystem clock, and a tie falls back to dir order.
+  // B's meta.json is pinned too — a candidate is any journal file OR the
+  // meta, and its fixture mtime (real "now") would outrank A forever.
   const year2021 = new Date(Date.UTC(2021, 5, 15))
   const year2022 = new Date(Date.UTC(2022, 5, 15))
+  utimesSync(join(home, "logs", "session", "unified", "sessB-dir", "meta.json"), year2021, year2021)
   // …while B's chunk is pinned in 2021, so B is the newest candidate.
   utimesSync(bChunk, year2021, year2021)
   const b = JSON.parse((await executeFindMarker({ uuid: UUID_B }, {})).content)
