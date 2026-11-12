@@ -28,7 +28,9 @@ jobs:
       # The suite is hermetic: the session-id tests run against a fixture
       # tree under TICKET_TEST_VIBE_HOME, never against a real ~/.vibe.
       - name: Run tests
-        run: bun test server/
+        # The suites mkdtemp their fixtures under the repo-relative .tmp/
+        # (gitignored scratch); a fresh checkout does not have it.
+        run: mkdir -p .tmp && bun test server/
 
       # Fail fast before an install ever runs: the imperative is that the
       # server fetches no modules, so `bun install` would be a regression.

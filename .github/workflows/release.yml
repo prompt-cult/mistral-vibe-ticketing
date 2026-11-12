@@ -35,7 +35,7 @@ jobs:
 
       # Never tag red: the full suite runs again on the exact tree tagged.
       - name: Run tests
-        run: bun test server/
+        run: mkdir -p .tmp && bun test server/
 
       - name: Refuse an already-published version
         run: |
