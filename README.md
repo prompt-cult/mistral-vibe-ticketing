@@ -18,8 +18,11 @@ extensions). Registration layer only — the contract is unchanged:
 ## Tools
 
 `ticketing.ticket_add` / `ticket_get` / `ticket_list` / `ticket_comment` /
-`ticket_status` / `ticket_rules` / `ticket_help`. Full contract:
-`ticket_help`.
+`ticket_status` / `ticket_rules` / `ticket_help` plus the session-id probe
+pair `ticketing.session_id_write_marker` / `ticketing.session_id_find_marker`
+(mint a marker uuid, echo it into your session journal, then find which
+rollout the marker landed in — read-only on `~/.vibe/logs/session/`). Full
+contract: `ticket_help`.
 
 ## Install (agent-friendly)
 

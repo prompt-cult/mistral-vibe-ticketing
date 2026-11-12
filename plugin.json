@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ticketing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Ticketing: immutable tickets with append-only comment streams; status is the only mutation; tickets survive across sessions and repos. Port of opencode-ticketing v2.2.1.",
   "author": {
     "name": "Prompt Cult",

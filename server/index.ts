@@ -9,6 +9,11 @@ import {
   ADD_INPUT, GET_INPUT, LIST_INPUT, COMMENT_INPUT, STATUS_INPUT, NONE_INPUT,
   ADD_DESC, GET_DESC, LIST_DESC, COMMENT_DESC, STATUS_DESC, RULES_DESC, HELP_DESC,
 } from "./ticket"
+import {
+  executeWriteMarker, executeFindMarker,
+  WRITE_MARKER_INPUT, FIND_MARKER_INPUT,
+  WRITE_MARKER_DESC, FIND_MARKER_DESC,
+} from "./session-id"
 
 const decode = new TextDecoder()
 let pending = ""
@@ -35,6 +40,8 @@ const TOOLS = [
   { name: "ticket_status", description: STATUS_DESC, inputSchema: STATUS_INPUT },
   { name: "ticket_rules", description: RULES_DESC, inputSchema: NONE_INPUT },
   { name: "ticket_help", description: HELP_DESC, inputSchema: NONE_INPUT },
+  { name: "session_id_write_marker", description: WRITE_MARKER_DESC, inputSchema: WRITE_MARKER_INPUT },
+  { name: "session_id_find_marker", description: FIND_MARKER_DESC, inputSchema: FIND_MARKER_INPUT },
 ]
 
 const HANDLERS: Record<string, (args: any, context: any) => Promise<{ content: string }>> = {
@@ -45,6 +52,8 @@ const HANDLERS: Record<string, (args: any, context: any) => Promise<{ content: s
   ticket_status: executeStatus,
   ticket_rules: executeRules,
   ticket_help: executeHelp,
+  session_id_write_marker: executeWriteMarker,
+  session_id_find_marker: executeFindMarker,
 }
 
 const context = { sessionID: process.env.TICKET_SESSION_ID ?? null }
@@ -65,7 +74,7 @@ async function main() {
       result = {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "ticketing", version: "1.0.0" },
+        serverInfo: { name: "ticketing", version: "1.1.0" },
       }
     } else if (msg.method === "notifications/initialized" || msg.method?.startsWith("notifications/")) {
       continue

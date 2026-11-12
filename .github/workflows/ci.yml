@@ -1,0 +1,42 @@
+name: ci
+
+# Test gate only: `bun test` over the whole server/ tree. No build step —
+# the plugin is plain TypeScript run by bun, and no modules are fetched
+# (bun-read-only stdlib), so the job needs nothing beyond bun itself.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # The suite is hermetic: the session-id tests run against a fixture
+      # tree under TICKET_TEST_VIBE_HOME, never against a real ~/.vibe.
+      - name: Run tests
+        # The suites mkdtemp their fixtures under the repo-relative .tmp/
+        # (gitignored scratch); a fresh checkout does not have it.
+        run: mkdir -p .tmp && bun test server/
+
+      # Fail fast before an install ever runs: the imperative is that the
+      # server fetches no modules, so `bun install` would be a regression.
+      - name: Prove no install step is needed
+        run: |
+          if [ -f package.json ] && grep -q '"dependencies"' package.json; then
+            echo "::error::runtime dependencies appeared; the plugin must stay dependency-free"
+            exit 1
+          fi
