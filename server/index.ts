@@ -74,7 +74,7 @@ async function main() {
       result = {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "ticketing", version: "1.0.0" },
+        serverInfo: { name: "ticketing", version: "1.1.0" },
       }
     } else if (msg.method === "notifications/initialized" || msg.method?.startsWith("notifications/")) {
       continue

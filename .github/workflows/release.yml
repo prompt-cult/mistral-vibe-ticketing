@@ -1,0 +1,66 @@
+name: release
+
+# Tags before anything else: a release is an immutable tag
+# `vX.Y.Z-<shortsha>` cut from a main commit, plus a GitHub Release whose
+# notes are generated from the merges into that tag. A wrong or stale tag
+# is never deleted or re-pushed — the fix is forward: bump the version and
+# cut a new tag.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 1.1.0) — the tag becomes v<version>-<shortsha>'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The notes must reach everything merged since the last release.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # Never tag red: the full suite runs again on the exact tree tagged.
+      - name: Run tests
+        run: bun test server/
+
+      - name: Refuse an already-published version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if git tag --list | grep -qE "^v${VERSION}-[0-9a-f]+$"; then
+            echo "::error::v${VERSION} is already published — bump the version, do not recycle tags"
+            exit 1
+          fi
+
+      # GPG off; the tag is annotated so it carries a message, and its name
+      # pins the sha (immutable: `x.y.z-<something>` per repo convention).
+      - name: Tag v${{ inputs.version }}-${{ github.sha }}
+        run: |
+          SHORTSHA="${GITHUB_SHA::8}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ inputs.version }}-${SHORTSHA}" -m "v${{ inputs.version }} @ ${GITHUB_SHA}"
+          git push origin "v${{ inputs.version }}-${SHORTSHA}"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHORTSHA="${GITHUB_SHA::8}"
+          gh release create "v${{ inputs.version }}-${SHORTSHA}" \
+            --title "v${{ inputs.version }}-${SHORTSHA}" \
+            --generate-notes \
+            --verify-tag
