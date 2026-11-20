@@ -5,7 +5,7 @@
 // without loading opencode; TICKET_DB_HOME points at a gitignored scratch
 // dir so the shared ticket DB is never touched.
 import { test, expect, beforeAll } from "bun:test"
-import { mkdtempSync } from "node:fs"
+import { mkdirSync, mkdtempSync } from "node:fs"
 import { join } from "node:path"
 import {
   executeAdd,
@@ -37,6 +37,7 @@ import {
 } from "./ticket"
 
 beforeAll(() => {
+  mkdirSync(".tmp", { recursive: true })
   process.env.TICKET_DB_HOME = mkdtempSync(join(".tmp", "ticket-test-"))
 })
 
