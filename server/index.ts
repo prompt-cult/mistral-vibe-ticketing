@@ -5,9 +5,9 @@
 // TICKET_SESSION_ID if the harness injects one, else null.
 import {
   executeAdd, executeGet, executeList, executeComment,
-  executeStatus, executeRules, executeHelp,
-  ADD_INPUT, GET_INPUT, LIST_INPUT, COMMENT_INPUT, STATUS_INPUT, NONE_INPUT,
-  ADD_DESC, GET_DESC, LIST_DESC, COMMENT_DESC, STATUS_DESC, RULES_DESC, HELP_DESC,
+  executeStatus, executeDelete, executeRules, executeHelp,
+  ADD_INPUT, GET_INPUT, LIST_INPUT, COMMENT_INPUT, STATUS_INPUT, DELETE_INPUT, NONE_INPUT,
+  ADD_DESC, GET_DESC, LIST_DESC, COMMENT_DESC, STATUS_DESC, DELETE_DESC, RULES_DESC, HELP_DESC,
 } from "./ticket"
 import {
   executeWriteMarker, executeFindMarker,
@@ -38,6 +38,7 @@ const TOOLS = [
   { name: "ticket_list", description: LIST_DESC, inputSchema: LIST_INPUT },
   { name: "ticket_comment", description: COMMENT_DESC, inputSchema: COMMENT_INPUT },
   { name: "ticket_status", description: STATUS_DESC, inputSchema: STATUS_INPUT },
+  { name: "ticket_delete", description: DELETE_DESC, inputSchema: DELETE_INPUT },
   { name: "ticket_rules", description: RULES_DESC, inputSchema: NONE_INPUT },
   { name: "ticket_help", description: HELP_DESC, inputSchema: NONE_INPUT },
   { name: "session_id_write_marker", description: WRITE_MARKER_DESC, inputSchema: WRITE_MARKER_INPUT },
@@ -50,6 +51,7 @@ const HANDLERS: Record<string, (args: any, context: any) => Promise<{ content: s
   ticket_list: executeList,
   ticket_comment: executeComment,
   ticket_status: executeStatus,
+  ticket_delete: executeDelete,
   ticket_rules: executeRules,
   ticket_help: executeHelp,
   session_id_write_marker: executeWriteMarker,

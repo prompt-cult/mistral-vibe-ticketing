@@ -13,6 +13,7 @@ import {
   executeList,
   executeComment,
   executeStatus,
+  executeDelete,
   executeRules,
   executeHelp,
   parseEnvelope,
@@ -302,4 +303,23 @@ test("the todowrite mirror is unchanged: flushing 'N: …' closes ticket N for t
   const changed2 = store.syncStatuses([{ content: `${created.id}: mirror`, status: "in_progress" }], "ses_other")
   expect(changed2).toEqual([])
   store.close()
+})
+
+test("soft-delete: ticket_delete sets deleted_at, hides from default list, include_deleted reveals it", async () => {
+  const created = await add("softdel test", "ses_sd")
+  // owner-only refusal
+  const refused = parseEnvelope((await executeDelete({ id: created.id, rollout_id: "ses_wrong" }, { sessionID: "ses_x" })).content)
+  expect(refused?.code).toBe("E_DELETE_REFUSED")
+  // delete with a reason comment
+  const ok = JSON.parse((await executeDelete({ id: created.id, rollout_id: "ses_sd", content: "done, retiring" }, { sessionID: "ses_sd" })).content)
+  expect(ok.deleted_at).toBeTruthy()
+  // hidden by default
+  const hidden = JSON.parse((await executeList({ rollout_id: "ses_sd" }, {})).content)
+  expect(hidden.some((r: { id: number }) => r.id === created.id)).toBe(false)
+  // revealed with include_deleted
+  const shown = JSON.parse((await executeList({ rollout_id: "ses_sd", include_deleted: true }, {})).content)
+  expect(shown.some((r: { id: number }) => r.id === created.id)).toBe(true)
+  // idempotent: second delete returns same row
+  const again = JSON.parse((await executeDelete({ id: created.id, rollout_id: "ses_sd" }, { sessionID: "ses_sd" })).content)
+  expect(again.deleted_at).toBe(ok.deleted_at)
 })

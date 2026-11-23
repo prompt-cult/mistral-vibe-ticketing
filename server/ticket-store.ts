@@ -18,6 +18,7 @@ export interface TicketRow {
   rollout_id: string
   last_actor: string | null
   md_content: string | null
+  deleted_at: string | null
 }
 
 export interface TicketComment {
@@ -44,6 +45,7 @@ export interface ListFilter {
   rollout_id?: string
   status?: TicketStatus
   all?: boolean
+  include_deleted?: boolean
 }
 
 export function ticketDbPath(): string {
@@ -69,7 +71,8 @@ export class TicketStore {
         status TEXT NOT NULL DEFAULT 'pending',
         rollout_id TEXT NOT NULL,
         last_actor TEXT,
-        md_content TEXT
+        md_content TEXT,
+        deleted_at TEXT
       );
       CREATE TABLE IF NOT EXISTS ticket_comment (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +116,7 @@ export class TicketStore {
   get(id: number): TicketRow | undefined {
     return (
       (this.db
-        .query("SELECT id, created_at, updated_at, todo, status, rollout_id, last_actor, md_content FROM ticket WHERE id = ?")
+        .query("SELECT id, created_at, updated_at, todo, status, rollout_id, last_actor, md_content, deleted_at FROM ticket WHERE id = ?")
         .get(id) as TicketRow | null) ?? undefined
     )
   }
@@ -129,7 +132,10 @@ export class TicketStore {
       where.push("status = ?")
       params.push(filter.status)
     }
-    const sql = `SELECT id, created_at, updated_at, todo, status, rollout_id, last_actor, md_content FROM ticket ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id`
+    if (!filter.include_deleted) {
+      where.push("deleted_at IS NULL")
+    }
+    const sql = `SELECT id, created_at, updated_at, todo, status, rollout_id, last_actor, md_content, deleted_at FROM ticket ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id`
     return this.db.query(sql).all(...params) as TicketRow[]
   }
 
@@ -145,6 +151,19 @@ export class TicketStore {
     return this.get(id)
   }
 
+  delete(id: number, input: { rollout_id: string; last_actor?: string | null }): TicketRow | undefined {
+    const current = this.get(id)
+    if (!current) return undefined
+    this.assertOwner(current, input.rollout_id, "delete")
+    if (current.deleted_at) return current
+    const ts = this.now()
+    this.db.run(
+      `UPDATE ticket SET deleted_at = ?, last_actor = ?, updated_at = ? WHERE id = ?`,
+      [ts, input.last_actor ?? current.last_actor, ts, id],
+    )
+    return this.get(id)
+  }
+
   syncStatuses(items: Array<{ content?: unknown; status?: unknown }>, rolloutId: string): number[] {
     if (!rolloutId) throw new Error("syncStatuses requires the flushing session's rollout id")
     const changed: number[] = []
@@ -155,6 +174,7 @@ export class TicketStore {
       if (!m) continue
       const row = this.get(Number(m[1]))
       if (!row || row.rollout_id !== rolloutId || row.status === item.status) continue
+      if (row.deleted_at) continue
       this.setStatus(row.id, { rollout_id: rolloutId, status: item.status })
       changed.push(row.id)
     }

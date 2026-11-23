@@ -41,9 +41,10 @@ delegatee banner. When lost, call help first.
 ```
 mcp_ticketing.ticket_add({ rollout_id, todo, md_content })        // → returns N
 mcp_ticketing.ticket_get({ id: N })                               // row + comments
-mcp_ticketing.ticket_list({ rollout_id })   or  ({ all: true })    // status: optional filter
+mcp_ticketing.ticket_list({ rollout_id })   or  ({ all: true })    // status: optional filter; include_deleted=true to show soft-deleted
 mcp_ticketing.ticket_comment({ id: N, content })                  // ≤1000 chars, one at a time
 mcp_ticketing.ticket_status({ id: N, rollout_id: OWNER, status }) // the ONLY mutation
+mcp_ticketing.ticket_delete({ id: N, rollout_id: OWNER, [content] }) // soft-delete (sets deleted_at); owner-only
 mcp_ticketing.ticket_rules({})  mcp_ticketing.ticket_help({})
 ```
 
@@ -112,6 +113,7 @@ rules. The tool is the single source of truth for delegee rules.
 
 ## Rules
 
+- One-to-one: every top-level todo item IS one ticket, and every ticket is one top-level todo item - never a monolithic ticket spanning many steps, never a todo item without its ticket number.
 - rollout_id IS the session id — one id, no other. On Vibe it is a
   hand-picked per-session id (see "rollout_id on Vibe" above), not `ses_…`.
   An agent MUST
@@ -135,6 +137,9 @@ rules. The tool is the single source of truth for delegee rules.
 - Recovery (crashed session): `ticket_list rollout_id=<your session id>`,
   rebuild the todo list from your pending/in_progress rows (or `all=true`).
 - Never read the sqlite file directly — use the `ticket` tools.
+- Soft-delete via `ticket_delete` (owner-only): sets `deleted_at` and hides
+  the row from default `ticket_list`; pass `include_deleted=true` to
+  audit/recover. There is no hard delete — the row and its comments remain.
 - Errors are structured: every failure returns
   `{code, message, corrected_call}` — re-emit `corrected_call` verbatim
   (fill any `<fill: …>` placeholder) and the call succeeds. The legal
