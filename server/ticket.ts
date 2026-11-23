@@ -69,6 +69,7 @@ export const LIST_JTD = {
     rollout_id: { type: "string" },
     status: { enum: ["pending", "in_progress", "completed", "cancelled", "superseded"] },
     all: { type: "boolean" },
+    include_deleted: { type: "boolean" },
   },
 }
 
@@ -80,6 +81,11 @@ export const STATUS_JTD = {
     rollout_id: { type: "string" },
     status: { enum: ["pending", "in_progress", "completed", "cancelled", "superseded"] },
   },
+}
+
+export const DELETE_JTD = {
+  properties: { id: { type: "uint32" }, rollout_id: { type: "string" } },
+  optionalProperties: { content: { type: "string" } },
 }
 
 export const NONE_JTD = { properties: {} }
@@ -131,6 +137,9 @@ export function jtdValidateList(instance: any) {
     if ("all" in instance && instance["all"] !== undefined) {
       if (typeof instance["all"] !== "boolean") e.push({ instancePath: "/all", schemaPath: "/optionalProperties/all/type" })
     }
+    if ("include_deleted" in instance && instance["include_deleted"] !== undefined) {
+      if (typeof instance["include_deleted"] !== "boolean") e.push({ instancePath: "/include_deleted", schemaPath: "/optionalProperties/include_deleted/type" })
+    }
     if ("rollout_id" in instance && instance["rollout_id"] !== undefined) {
       if (typeof instance["rollout_id"] !== "string") e.push({ instancePath: "/rollout_id", schemaPath: "/optionalProperties/rollout_id/type" })
     }
@@ -138,7 +147,7 @@ export function jtdValidateList(instance: any) {
       if (typeof instance["status"] !== "string" || !STATUS_ENUM.includes(instance["status"])) e.push({ instancePath: "/status", schemaPath: "/optionalProperties/status/enum" })
     }
     for (const k in instance) {
-      if (k !== "all" && k !== "rollout_id" && k !== "status") e.push({ instancePath: "/" + k, schemaPath: "" })
+      if (k !== "all" && k !== "rollout_id" && k !== "status" && k !== "include_deleted") e.push({ instancePath: "/" + k, schemaPath: "" })
     }
   }
   return e
@@ -183,6 +192,29 @@ export function jtdValidateStatus(instance: any) {
     }
     for (const k in instance) {
       if (k !== "id" && k !== "rollout_id" && k !== "status") e.push({ instancePath: "/" + k, schemaPath: "" })
+    }
+  }
+  return e
+}
+
+export function jtdValidateDelete(instance: any) {
+  const e: any[] = []
+  if (instance === null || typeof instance !== "object" || Array.isArray(instance)) {
+    e.push({ instancePath: "", schemaPath: "/properties" })
+  } else {
+    if (!("id" in instance) || instance["id"] === undefined) e.push({ instancePath: "", schemaPath: "/properties/id" })
+    else {
+      if (typeof instance["id"] !== "number" || !Number.isInteger(instance["id"]) || instance["id"] < 0 || instance["id"] > 4294967295) e.push({ instancePath: "/id", schemaPath: "/properties/id/type" })
+    }
+    if (!("rollout_id" in instance) || instance["rollout_id"] === undefined) e.push({ instancePath: "", schemaPath: "/properties/rollout_id" })
+    else {
+      if (typeof instance["rollout_id"] !== "string") e.push({ instancePath: "/rollout_id", schemaPath: "/properties/rollout_id/type" })
+    }
+    if ("content" in instance && instance["content"] !== undefined) {
+      if (typeof instance["content"] !== "string") e.push({ instancePath: "/content", schemaPath: "/optionalProperties/content/type" })
+    }
+    for (const k in instance) {
+      if (k !== "id" && k !== "rollout_id" && k !== "content") e.push({ instancePath: "/" + k, schemaPath: "" })
     }
   }
   return e
@@ -259,6 +291,7 @@ export const LIST_INPUT = {
     rollout_id: { type: "string", description: "the session id to query" },
     status: { type: "string", description: "pending | in_progress | completed | cancelled | superseded (filter)" },
     all: { type: "boolean", description: "list every session's tickets (instead of one session's)" },
+    include_deleted: { type: "boolean", description: "include soft-deleted (deleted_at IS NOT NULL) tickets; default false" },
   },
   oneOf: [{ required: ["rollout_id"] }, { required: ["all"] }],
 }
@@ -288,6 +321,17 @@ export const STATUS_INPUT = {
   required: ["id", "rollout_id", "status"],
 }
 
+export const DELETE_INPUT = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    id: { type: "number", description: "ticket number" },
+    rollout_id: { type: "string", description: "the ticket's OWNING session id" },
+    content: { type: "string", maxLength: 1000, description: "optional reason (appended as a comment) — who/why" },
+  },
+  required: ["id", "rollout_id"],
+}
+
 export const NONE_INPUT = { type: "object", additionalProperties: false, properties: {} }
 
 // ─── Per-tool descriptions ─────────────────────────────────────────────────
@@ -315,6 +359,12 @@ ticket's OWNING session id. Closing the todo item "N: …" does this
 automatically; this tool covers the rest. To supersede: set the status and
 name the replacement ticket in a comment.`
 
+export const DELETE_DESC = `Soft-delete a ticket: sets deleted_at (owner-gated, like
+ticket_status). The row and its comments are never removed — append a
+ticket_comment with the reason (who/why) before or after. Soft-deleted rows
+are excluded from ticket_list by default; pass include_deleted=true to
+audit/recover. There is no hard delete.`
+
 export const RULES_DESC = `The delegatee banner: who you are (DELEGATEE), the immutability law, your
 only writes, and the standing subagent rules. A launched subagent's second
 call, after ticket_get.`
@@ -336,9 +386,10 @@ string to spell wrongly; each tool's schema declares its required params:
   [md_content=spec] -> creates the ticket; returns the permanent ticket
   number N. The body (md_content) is written ONCE, here — never after.
 - ticket_get id=N -> the row + its comments (chronological).
-- ticket_list rollout_id=<session id> [status=<status>] -> ONE session's
-  tickets; all=true -> every session's. The session id is required — an
-  agent must know which session it is querying.
+- ticket_list rollout_id=<session id> [status=<status>] [include_deleted=true] -> ONE session's
+  tickets; all=true -> every session's. Soft-deleted rows are hidden by
+  default; pass include_deleted=true to audit/recover. The session id is
+  required — an agent must know which session it is querying.
 - ticket_comment id=N content="..." -> the ONLY write after creation: a
   SHORT go/no-go note — done / not done / blocked — 1000 chars max. Long
   reports NEVER go on the ticket: detail lives in your final response (or a
@@ -348,6 +399,10 @@ string to spell wrongly; each tool's schema declares its required params:
   in_progress|completed|cancelled|superseded> -> the ONLY mutation.
   Owner-gated. The todo mirror sets ticket N's status automatically whenever
   the todo item "N: …" changes.
+- ticket_delete id=N rollout_id=<OWNER session id> [content=reason] ->
+  soft-delete: sets deleted_at; the row and its comments are never removed.
+  Owner-gated. Soft-deleted rows are hidden from ticket_list by default;
+  pass include_deleted=true to audit/recover. There is no hard delete.
 - ticket_rules -> the DELEGATEE's banner (its second call, after
   ticket_get).
 - ticket_help -> this text.
@@ -380,9 +435,13 @@ is the COMPLETE call — your received values kept, the missing ones filled
 (the REAL owner session id wherever the ticket is known). Re-emit it
 verbatim (fill any "<fill: …>" placeholder) and the call succeeds.
 
+One-to-one: every top-level todo item IS one ticket, and every ticket is one top-level todo item - never a monolithic ticket spanning many steps, never a todo item without its ticket number.
+
 Mark-complete vs drop: a subagent MARKS its todo item / the ticket done; only
-the ORCHESTRATOR removes todo items. Nothing is ever deleted — there is no
-delete action. Never read the SQLite file directly — the tools are the API.`
+the ORCHESTRATOR removes todo items. Nothing is ever hard-deleted — there is
+no hard delete; ticket_delete soft-deletes (deleted_at) and hides the row
+from default listings, but the row and its comments remain. Never read the
+SQLite file directly — the tools are the API.`
 }
 
 function rulesText(): string {
@@ -472,7 +531,7 @@ export async function executeList(args: any, context: any): Promise<{ content: s
       corrected,
     )
   try {
-    return ok(s.list({ status: args.status, rollout_id: args.rollout_id, all: args.all }))
+    return ok(s.list({ status: args.status, rollout_id: args.rollout_id, all: args.all, include_deleted: args.include_deleted }))
   } catch (e) {
     return fail("E_LIST_FAILED", (e as Error).message, { rollout_id: args.rollout_id ?? "<session id>", all: args.all })
   }
@@ -537,6 +596,39 @@ export async function executeStatus(args: any, context: any): Promise<{ content:
     if (msg.includes("refused"))
       return fail("E_STATUS_REFUSED", msg + ` — the owner session id is "${row.rollout_id}"`, corrected)
     return fail("E_STATUS_FAILED", msg, corrected)
+  }
+}
+
+export async function executeDelete(args: any, context: any): Promise<{ content: string }> {
+  const s = getStore()
+  const callerSession = context?.sessionID
+  const corrected: Record<string, unknown> = {
+    id: args?.id ?? "<fill: ticket number>",
+    rollout_id: args?.rollout_id ?? "<the ticket's owner session id>",
+  }
+  if (args?.content !== undefined) corrected.content = args.content
+  const jtd = jtdValidateDelete(args)
+  if (jtd.length) return jtdFail("DELETE", jtd, corrected)
+  const row = s.get(args.id)
+  if (!row) return fail("E_NO_TICKET", `no ticket with number ${args.id}`, corrected)
+  if (!args.rollout_id)
+    return fail("E_DELETE_MISSING_ROLLOUT_ID", `ticket_delete requires 'rollout_id' — this ticket's owner session id is "${row.rollout_id}"`, { id: row.id, rollout_id: row.rollout_id })
+  if (args.content) {
+    try {
+      s.appendComment(args.id, args.content, callerSession ?? null)
+    } catch (e) {
+      return fail("E_DELETE_FAILED", (e as Error).message, corrected)
+    }
+  }
+  try {
+    const updated = s.delete(args.id, { rollout_id: args.rollout_id, last_actor: callerSession ?? null })
+    if (!updated) return fail("E_NO_TICKET", `no ticket with number ${args.id}`, corrected)
+    return ok(updated)
+  } catch (e) {
+    const msg = (e as Error).message
+    if (msg.includes("refused"))
+      return fail("E_DELETE_REFUSED", msg + ` — the owner session id is "${row.rollout_id}"`, { id: row.id, rollout_id: row.rollout_id })
+    return fail("E_DELETE_FAILED", msg, corrected)
   }
 }
 
