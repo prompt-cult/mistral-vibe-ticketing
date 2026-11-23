@@ -6,6 +6,12 @@ name: ci
 on:
   push:
     branches: [main]
+    # Docs-only pushes cannot change what `bun test server/` exercises, so do
+    # not spend a runner on them. Scoped to `push` on purpose: pull_request
+    # stays unfiltered so every PR is verified the same way.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -20,6 +26,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
